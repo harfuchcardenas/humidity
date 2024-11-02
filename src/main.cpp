@@ -13,7 +13,7 @@
 /* the task every 20 seconds                                  */
 /**************************************************************/
 
-DHTesp dht;
+DHTesp DHT;
 
 void tempTask(void *pvParameters);
 bool getTemperature();
@@ -26,9 +26,9 @@ Ticker tempTicker;
 /** Comfort profile */
 ComfortState cf;
 /** Flag if task should run */
-bool tasksEnabled = false;
+bool tasksEnabled = true;
 /** Pin number for DHT11 data pin */
-int dhtPin = 27;
+int dhtPin = 4;
 
 /**
  * initTemp
@@ -41,7 +41,7 @@ int dhtPin = 27;
 bool initTemp() {
   byte resultValue = 0;
   // Initialize temperature sensor
-	dht.setup(dhtPin, DHTesp::DHT11);
+	DHT.setup(dhtPin, DHTesp::DHT11);
 	Serial.println("DHT initiated");
 
   // Start task to get temperature
@@ -58,8 +58,8 @@ bool initTemp() {
     Serial.println("Failed to start task for temperature update");
     return false;
   } else {
-    // Start update of environment data every 20 seconds
-    tempTicker.attach(20, triggerGetTemp);
+    // Start update of environment data every 10 seconds
+    tempTicker.attach(10, triggerGetTemp);
   }
   return true;
 }
@@ -81,7 +81,6 @@ void triggerGetTemp() {
  *    pointer to task parameters
  */
 void tempTask(void *pvParameters) {
-	Serial.println("tempTask loop started");
 	while (1) // tempTask loop
   {
     if (tasksEnabled) {
@@ -103,16 +102,16 @@ void tempTask(void *pvParameters) {
 bool getTemperature() {
 	// Reading temperature for humidity takes about 250 milliseconds!
 	// Sensor readings may also be up to 2 seconds 'old' (it's a very slow sensor)
-  TempAndHumidity newValues = dht.getTempAndHumidity();
+  TempAndHumidity newValues = DHT.getTempAndHumidity();
 	// Check if any reads failed and exit early (to try again).
-	if (dht.getStatus() != 0) {
-		Serial.println("DHT11 error status: " + String(dht.getStatusString()));
+	if (DHT.getStatus() != 0) {
+		Serial.println("DHT11 error status: " + String(DHT.getStatusString()));
 		return false;
 	}
 
-	float heatIndex = dht.computeHeatIndex(newValues.temperature, newValues.humidity);
-  float dewPoint = dht.computeDewPoint(newValues.temperature, newValues.humidity);
-  float cr = dht.getComfortRatio(cf, newValues.temperature, newValues.humidity);
+	float heatIndex = DHT.computeHeatIndex(newValues.temperature, newValues.humidity);
+  float dewPoint = DHT.computeDewPoint(newValues.temperature, newValues.humidity);
+  float cr = DHT.getComfortRatio(cf, newValues.temperature, newValues.humidity);
 
   String comfortStatus;
   switch(cf) {
@@ -152,6 +151,8 @@ bool getTemperature() {
 	return true;
 }
 
+int r = 0;
+
 void setup()
 {
   Serial.begin(115200);
@@ -160,9 +161,18 @@ void setup()
   initTemp();
   // Signal end of setup() to tasks
   tasksEnabled = true;
+  DHT.resetTimer();
 }
 
 void loop() {
+  delay(2000);
+  tasksEnabled = false;
+  r=0;
+  if (r==0)
+  {
+    r = 1;
+  }
+  
   if (!tasksEnabled) {
     // Wait 2 seconds to let system settle down
     delay(2000);
@@ -172,5 +182,5 @@ void loop() {
 			vTaskResume(tempTaskHandle);
 		}
   }
-  yield();
+  //yield();
 }
